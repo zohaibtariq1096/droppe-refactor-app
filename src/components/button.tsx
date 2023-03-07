@@ -1,13 +1,21 @@
 import * as React from "react";
+import PropTypes from "prop-types";
 import styles from "./button.module.css";
 
-interface props {
-  children: any;
+interface Props {
+  children: React.ReactNode;
   onClick?: () => void;
 }
 
-export const Button: React.FC<props> = ({ children, onClick }) => (
+const Button: React.FC<Props> = React.memo(({ children, onClick }) => (
   <button className={styles.button} onClick={onClick}>
     {children}
   </button>
-);
+));
+
+Button.propTypes = {
+  children: PropTypes.node.isRequired,
+  onClick: PropTypes.func,
+};
+
+export default Button;
