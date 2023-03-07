@@ -1,5 +1,4 @@
-import * as React from "react";
-import lodash from 'lodash';
+import React, { useState, useEffect } from "react";
 import Modal from "react-modal";
 import { FaTimes } from "react-icons/fa";
 import Button from "./components/button";
@@ -10,173 +9,148 @@ import img1 from "./images/img1.png";
 import img2 from "./images/img2.png";
 import styles from "./shopApp.module.css";
 
-export class ShopApp extends React.Component<
-  {},
-  { products: any[]; isOpen: boolean; isShowingMessage: boolean; message: string; numFavorites: number; prodCount: number }
-> {
-  constructor(props: any) {
-    super(props);
+type Product = {
+  title: string;
+  description: string;
+  price: string;
+  isFavorite: boolean;
+};
 
-    this.favClick = this.favClick.bind(this);
-    this.onSubmit = this.onSubmit.bind(this);
+const ShopApp = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isShowingMessage, setIsShowingMessage] = useState(false);
+  const [message, setMessage] = useState("");
+  const [numFavorites, setNumFavorites] = useState(0);
+  const [prodCount, setProdCount] = useState(0);
 
-    this.state = { products: [], isOpen: false, isShowingMessage: false, message: '', numFavorites: 0, prodCount: 0 };
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch("https://fakestoreapi.com/products");
+      const data = await response.json();
+      setProducts(data);
+      setProdCount(data.length);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    }
+  };
 
-    fetch('https://fakestoreapi.com/products').then((response) => {
-      let jsonResponse = response.json();
+  const favClick = (title: string) => {
+    const idx = products.findIndex((prod) => prod.title === title);
+    const updatedProds = [...products];
+    const currentFavs = numFavorites;
+    let totalFavs: number;
 
-      jsonResponse.then((rawData) => {
-        let data = [];
-
-        for (let i = 0; i < rawData.length; i++) {
-          let updatedProd = rawData[i];
-          data.push(updatedProd);
-        }
-        this.setState({
-          products: data,
-        });
-        this.setState({
-          prodCount: data.length
-        })
-      });
-    });
-  }
-
-   componentDidMount(){
-      document.title = "Droppe refactor app"
-   }
-
-  favClick(title: string) {
-    const prods = this.state.products;
-    const idx = lodash.findIndex(prods, {title: title})
-    let currentFavs = this.state.numFavorites
-    let totalFavs: any;
-
-    if (prods[idx].isFavorite) {
-      prods[idx].isFavorite = false;
-      totalFavs = --currentFavs
+    if (updatedProds[idx].isFavorite) {
+      updatedProds[idx].isFavorite = false;
+      totalFavs = currentFavs - 1;
     } else {
-      totalFavs = ++currentFavs
-      prods[idx].isFavorite = true;
+      updatedProds[idx].isFavorite = true;
+      totalFavs = currentFavs + 1;
     }
 
-    this.setState(() => ({ products: prods, numFavorites: totalFavs }));
-  }
+    setProducts(updatedProds);
+    setNumFavorites(totalFavs);
+  };
 
-  onSubmit(payload: { title: string; description: string, price: string }) {
-    const updated = lodash.clone(this.state.products);
-    updated.push({
+  const onSubmit = async (payload: {
+    title: string;
+    description: string;
+    price: string;
+  }) => {
+    const updatedProds = [...products];
+    updatedProds.push({
       title: payload.title,
       description: payload.description,
-      price: payload.price
+      price: payload.price,
+      isFavorite: false,
     });
 
-    this.setState({
-      products: updated,
-      prodCount: lodash.size(this.state.products) + 1
-    });
+    setProducts(updatedProds);
+    setProdCount(updatedProds.length);
+    setIsOpen(false);
+    setIsShowingMessage(true);
+    setMessage("Adding product...");
 
-    this.setState({
-      isOpen: false,
-    });
+    try {
+      const response = await fetch("https://fakestoreapi.com/products", {
+        method: "POST",
+        body: JSON.stringify({
+          title: payload.title,
+          price: payload.price,
+          description: payload.description,
+        }),
+      });
+      await response.json();
+    } catch (error) {
+      console.error("Error adding product:", error);
+    }
 
-    this.setState({
-      isShowingMessage: true,
-      message: 'Adding product...'
-    })
+    setTimeout(() => {
+      setIsShowingMessage(false);
+      setMessage("");
+    }, 2000);
+  };
 
-    // **this POST request doesn't actually post anything to any database**
-    fetch('https://fakestoreapi.com/products',{
-            method:"POST",
-            body:JSON.stringify(
-                {
-                    title: payload.title,
-                    price: payload.price,
-                    description: payload.description,
-                }
-            )
-        })
-            .then(res=>res.json())
-            .then(json => {
-               (function (t) {
-                 setTimeout(()=>{
-                    t.setState({
-                       isShowingMessage: false,
-                       message: ''
-                    })
-                 }, 2000)
-              })(this);
-            })
-  }
+  const handleButtonClick = () => {
+    setIsOpen(true);
+  };
 
-  render() {
-    const { products, isOpen } = this.state;
-    return (
-      <React.Fragment>
-        <div className={styles.header}>
-          <div className={['container', styles.headerImageWrapper].join(' ')}>
-            <img src={logo} className={styles.headerImage} />
+  const handleCloseModal = () => {
+    setIsOpen(false);
+  };
+
+  useEffect(() => {
+    fetchProducts();
+    document.title = "Droppe refactor app";
+  }, []);
+
+  return (
+    <>
+    <div className={styles.header}>
+      <div className={`${styles.headerImageWrapper} container`}>
+        <img src={logo} className={styles.headerImage} alt="Logo" />
+      </div>
+    </div>
+
+    <span className={`${styles.main} container`} style={{ margin: '50px auto', display: 'flex', justifyContent: 'space-evenly' }}>
+      <img src={img1} style={{ maxHeight: '15em', display: 'block' }} alt="img1" />
+      <img src={img2} style={{ maxHeight: '15em', display: 'block' }} alt="img2" />
+    </span>
+
+    <div className={`${styles.main} container`} style={{ paddingTop: 0 }}>
+      <div className={styles.buttonWrapper}>
+        <span role="button">
+          <Button onClick={handleButtonClick}>Send product proposal</Button>
+        </span>
+        {isShowingMessage && (
+          <div className={styles.messageContainer}>
+            <i>{message}</i>
           </div>
+        )}
+      </div>
+
+      <div className={styles.statsContainer}>
+        <span>Total products: {prodCount}</span> - <span>Number of favorites: {numFavorites}</span>
+      </div>
+
+      {products && products.length ? <ProductList products={products} onFav={favClick} /> : <div></div>}
+    </div>
+
+    
+
+    <Modal isOpen={isOpen} className={styles.reactModalContent} overlayClassName={styles.reactModalOverlay}>
+      <div className={styles.modalContentHelper}>
+        <div className={styles.modalClose} onClick={handleCloseModal}>
+          <FaTimes />
         </div>
 
-        <>
-           <span
-              className={['container', styles.main].join(' ')}
-              style={{margin: '50px inherit', display: 'flex', justifyContent: 'space-evenly'}}
-           >
-            <img src={img1} style={{maxHeight: "15em", display: 'block'}} />
-            <img src={img2} style={{maxHeight: "15rem", display: 'block'}} />
-           </span>
-        </>
+        <Form onSubmit={onSubmit} />
+      </div>
+    </Modal>
+  </>
+  )
+};
 
-        <div className={['container', styles.main].join(' ')} style={{paddingTop: 0}}>
-          <div className={styles.buttonWrapper}>
-            <span role="button">
-               <Button
-                  onClick={function (this: any) {
-                     this.setState({
-                        isOpen: true,
-                     });
-                  }.bind(this)}
-               >Send product proposal</Button>
-            </span>
-             {this.state.isShowingMessage && <div className={styles.messageContainer}>
-                <i>{this.state.message}</i>
-             </div>}
-          </div>
 
-          <div className={styles.statsContainer}>
-            <span>Total products: {this.state.prodCount}</span>
-            {' - '}
-            <span>Number of favorites: {this.state.numFavorites}</span>
-          </div>
-
-          {products && !!products.length ? <ProductList products={products} onFav={this.favClick} /> : <div></div>}
-        </div>
-
-        <>
-           <Modal
-              isOpen={isOpen}
-              className={styles.reactModalContent}
-              overlayClassName={styles.reactModalOverlay}
-           >
-              <div className={styles.modalContentHelper}>
-                 <div
-                    className={styles.modalClose}
-                    onClick={function (this: any) {
-                       this.setState({
-                          isOpen: false,
-                       });
-                    }.bind(this)}
-                 ><FaTimes /></div>
-
-                 <Form
-                    onSubmit={this.onSubmit}
-                 />
-              </div>
-           </Modal>
-        </>
-      </React.Fragment>
-    );
-  }
-}
+export default ShopApp;
