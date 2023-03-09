@@ -139,7 +139,7 @@ const ShopApp = () => {
 
     
 
-    <Modal isOpen={isOpen} className={styles.reactModalContent} overlayClassName={styles.reactModalOverlay}>
+    <Modal isOpen={isOpen} className={styles.reactModalContent} overlayClassName={styles.reactModalOverlay} ariaHideApp={false}>
       <div className={styles.modalContentHelper}>
         <div className={styles.modalClose} onClick={handleCloseModal}>
           <FaTimes />
